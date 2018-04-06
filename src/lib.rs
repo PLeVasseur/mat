@@ -61,8 +61,8 @@
 //!
 //! [const generics]: https://github.com/rust-lang/rust/issues/44580
 
-#![deny(missing_docs)]
-#![deny(warnings)]
+//#![deny(missing_docs)]
+//#![deny(warnings)]
 #![feature(proc_macro)]
 #![feature(unsize)]
 #![no_std]
@@ -70,17 +70,20 @@
 extern crate mat_macros;
 #[doc(hidden)]
 pub extern crate typenum;
+pub extern crate generic_array;
 
 use core::ops;
 use core::marker::{PhantomData, Unsize};
 use core::fmt;
 
 pub use mat_macros::mat;
-use typenum::Unsigned;
+use typenum::{Unsigned, U1, U2,Prod};
 
 pub mod traits;
 
 use traits::{Matrix, UnsafeGet, Zero};
+
+use generic_array::{GenericArray, ArrayLength};
 
 /// Statically allocated (row major order) matrix
 #[derive(Clone)]
@@ -92,6 +95,20 @@ where
     T: Copy,
 {
     buffer: BUFFER,
+    ty: PhantomData<[T; 0]>,
+    nrows: PhantomData<NROWS>,
+    ncols: PhantomData<NCOLS>,
+}
+
+/// Statically allocated (row major order) matrix
+#[derive(Clone)]
+pub struct MatGen<T, NROWS, NCOLS>
+    where
+        NCOLS: ArrayLength<T>,
+        NROWS: ArrayLength<T>,
+        T: Copy,
+{
+    buffer: GenericArray<T,Prod<NCOLS,NROWS>>,
     ty: PhantomData<[T; 0]>,
     nrows: PhantomData<NROWS>,
     ncols: PhantomData<NCOLS>,
@@ -131,6 +148,23 @@ where
             ty: PhantomData,
             nrows: PhantomData,
             ncols: PhantomData,
+        }
+    }
+}
+
+impl<T, NROWS, NCOLS> MatGen<T, NROWS, NCOLS>
+    where
+        NROWS: ArrayLength<T>,
+        NCOLS: ArrayLength<T>,
+        T: Copy,
+{
+    #[doc(hidden)]
+    pub unsafe fn new(buffer: GenericArray<T,Prod<NROWS,NCOLS>>) -> Self {
+        MatGen {
+            ty: PhantomData,
+            nrows: PhantomData,
+            ncols: PhantomData,
+            buffer,
         }
     }
 }
