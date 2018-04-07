@@ -73,17 +73,19 @@ pub extern crate typenum;
 pub extern crate generic_array;
 
 use core::ops;
-use core::marker::{PhantomData, Unsize};
+use core::ops::{Deref, DerefMut, Mul, Add};
+use core::marker::{PhantomData, Unsize, Sized};
 use core::fmt;
 
 pub use mat_macros::mat;
-use typenum::{Unsigned, U1, U2,Prod};
+use typenum::{Unsigned, U1, U2, Prod, UInt};
+use generic_array::{GenericArray, ArrayLength};
 
 pub mod traits;
+pub mod dimension;
 
+use dimension::DimName;
 use traits::{Matrix, UnsafeGet, Zero};
-
-use generic_array::{GenericArray, ArrayLength};
 
 /// Statically allocated (row major order) matrix
 #[derive(Clone)]
@@ -100,18 +102,15 @@ where
     ncols: PhantomData<NCOLS>,
 }
 
-/// Statically allocated (row major order) matrix
-#[derive(Clone)]
-pub struct MatGen<T, NROWS, NCOLS>
+#[repr(C)]
+pub struct MatrixArray<T, R, C>
     where
-        NCOLS: ArrayLength<T>,
-        NROWS: ArrayLength<T>,
-        T: Copy,
+        R: DimName,
+        C: DimName,
+        R::Value: Mul<C::Value>,
+        Prod<R::Value, C::Value>: ArrayLength<T>,
 {
-    buffer: GenericArray<T,Prod<NCOLS,NROWS>>,
-    ty: PhantomData<[T; 0]>,
-    nrows: PhantomData<NROWS>,
-    ncols: PhantomData<NCOLS>,
+    data: GenericArray<T, Prod<R::Value, C::Value>>,
 }
 
 /// The product of two matrices
@@ -148,23 +147,6 @@ where
             ty: PhantomData,
             nrows: PhantomData,
             ncols: PhantomData,
-        }
-    }
-}
-
-impl<T, NROWS, NCOLS> MatGen<T, NROWS, NCOLS>
-    where
-        NROWS: ArrayLength<T>,
-        NCOLS: ArrayLength<T>,
-        T: Copy,
-{
-    #[doc(hidden)]
-    pub unsafe fn new(buffer: GenericArray<T,Prod<NROWS,NCOLS>>) -> Self {
-        MatGen {
-            ty: PhantomData,
-            nrows: PhantomData,
-            ncols: PhantomData,
-            buffer,
         }
     }
 }
