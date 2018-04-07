@@ -103,15 +103,15 @@ where
 }
 
 #[repr(C)]
-pub struct MatrixArray<T, R, C>
+pub struct MatGen<T, NROWS, NCOLS>
 where
-    T: Copy + Zero + Default,
-    R: DimName,
-    C: DimName,
-    R::Value: Mul<C::Value>,
-    Prod<R::Value, C::Value>: ArrayLength<T>,
+    T: Copy + Default,
+    NROWS: DimName,
+    NCOLS: DimName,
+    NROWS::Value: Mul<NCOLS::Value>,
+    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>,
 {
-    data: GenericArray<T, Prod<R::Value, C::Value>>,
+    data: GenericArray<T, Prod<NROWS::Value, NCOLS::Value>>,
 }
 
 /// The product of two matrices
@@ -152,31 +152,31 @@ where
     }
 }
 
-impl<T, R, C> MatrixArray<T, R, C>
+impl<T, NROWS, NCOLS> MatGen<T, NROWS, NCOLS>
 where
-    T: Copy + Zero + Default,
-    R: DimName,
-    C: DimName,
-    R::Value: Mul<C::Value>,
-    Prod<R::Value, C::Value>: ArrayLength<T>,
+    T: Copy + Default,
+    NROWS: DimName,
+    NCOLS: DimName,
+    NROWS::Value: Mul<NCOLS::Value>,
+    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>,
 {
     fn new() -> Self {
-        MatrixArray {
+        MatGen {
             data: Default::default()
         }
     }
 }
 
-impl<T, R, C> Default for MatrixArray<T, R, C>
+impl<T, NROWS, NCOLS> Default for MatGen<T, NROWS, NCOLS>
 where
     T: Copy + Zero + Default,
-    R: DimName,
-    C: DimName,
-    R::Value: Mul<C::Value>,
-    Prod<R::Value, C::Value>: ArrayLength<T>,
+    NROWS: DimName,
+    NCOLS: DimName,
+    NROWS::Value: Mul<NCOLS::Value>,
+    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>,
 {
-    fn default() -> MatrixArray<T, R, C> {
-        MatrixArray {
+    fn default() -> MatGen<T, NROWS, NCOLS> {
+        MatGen {
             data: Default::default()
         }
     }
