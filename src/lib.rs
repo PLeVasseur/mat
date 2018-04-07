@@ -104,11 +104,12 @@ where
 
 #[repr(C)]
 pub struct MatrixArray<T, R, C>
-    where
-        R: DimName,
-        C: DimName,
-        R::Value: Mul<C::Value>,
-        Prod<R::Value, C::Value>: ArrayLength<T>,
+where
+    T: Copy + Zero + Default,
+    R: DimName,
+    C: DimName,
+    R::Value: Mul<C::Value>,
+    Prod<R::Value, C::Value>: ArrayLength<T>,
 {
     data: GenericArray<T, Prod<R::Value, C::Value>>,
 }
@@ -147,6 +148,36 @@ where
             ty: PhantomData,
             nrows: PhantomData,
             ncols: PhantomData,
+        }
+    }
+}
+
+impl<T, R, C> MatrixArray<T, R, C>
+where
+    T: Copy + Zero + Default,
+    R: DimName,
+    C: DimName,
+    R::Value: Mul<C::Value>,
+    Prod<R::Value, C::Value>: ArrayLength<T>,
+{
+    fn new() -> Self {
+        MatrixArray {
+            data: Default::default()
+        }
+    }
+}
+
+impl<T, R, C> Default for MatrixArray<T, R, C>
+where
+    T: Copy + Zero + Default,
+    R: DimName,
+    C: DimName,
+    R::Value: Mul<C::Value>,
+    Prod<R::Value, C::Value>: ArrayLength<T>,
+{
+    fn default() -> MatrixArray<T, R, C> {
+        MatrixArray {
+            data: Default::default()
         }
     }
 }
