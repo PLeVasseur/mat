@@ -73,12 +73,12 @@ pub extern crate typenum;
 pub extern crate generic_array;
 
 use core::ops;
-use core::ops::{Deref, DerefMut, Mul, Add};
-use core::marker::{PhantomData, Unsize, Sized};
+use core::ops::{Mul};
+use core::marker::{PhantomData, Unsize};
 use core::fmt;
 
 pub use mat_macros::mat;
-use typenum::{Unsigned, U1, U2, Prod, UInt};
+use typenum::{Unsigned, Prod};
 use generic_array::{GenericArray, ArrayLength};
 
 pub mod traits;
@@ -192,6 +192,31 @@ where
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut is_first = true;
         let slice: &[T] = &self.buffer;
+        f.write_str("[")?;
+        for row in slice.chunks(NCOLS::to_usize()) {
+            if is_first {
+                is_first = false;
+            } else {
+                f.write_str(", ")?;
+            }
+
+            write!(f, "{:?}", row)?;
+        }
+        f.write_str("]")
+    }
+}
+
+impl<T, NROWS, NCOLS> fmt::Debug for MatGen<T, NROWS, NCOLS>
+where
+    T: Copy + Default + fmt::Debug,
+    NROWS: DimName + Unsigned,
+    NCOLS: DimName + Unsigned,
+    NROWS::Value: Mul<NCOLS::Value>,
+    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut is_first = true;
+        let slice = &self.data.as_slice();
         f.write_str("[")?;
         for row in slice.chunks(NCOLS::to_usize()) {
             if is_first {
