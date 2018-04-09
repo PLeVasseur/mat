@@ -114,6 +114,18 @@ where
     data: GenericArray<T, Prod<NROWS::Value, NCOLS::Value>>,
 }
 
+#[repr(C)]
+pub struct MatGen2<T, NROWS, NCOLS>
+where
+    T: Copy + Default,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    data: GenericArray<T, Prod<NROWS, NCOLS>>,
+}
+
 /// The product of two matrices
 #[derive(Clone, Copy)]
 pub struct Product<L, R> {
@@ -182,6 +194,21 @@ where
     }
 }
 
+impl<T, NROWS, NCOLS> Default for MatGen2<T, NROWS, NCOLS>
+where
+    T: Copy + Default,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    fn default() -> MatGen2<T, NROWS, NCOLS> {
+        MatGen2 {
+            data: Default::default()
+        }
+    }
+}
+
 impl<T, BUFFER, NROWS, NCOLS> fmt::Debug for Mat<T, BUFFER, NROWS, NCOLS>
 where
     BUFFER: Unsize<[T]>,
@@ -213,6 +240,31 @@ where
     NCOLS: DimName + Unsigned,
     NROWS::Value: Mul<NCOLS::Value>,
     Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut is_first = true;
+        let slice = &self.data.as_slice();
+        f.write_str("[")?;
+        for row in slice.chunks(NCOLS::to_usize()) {
+            if is_first {
+                is_first = false;
+            } else {
+                f.write_str(", ")?;
+            }
+
+            write!(f, "{:?}", row)?;
+        }
+        f.write_str("]")
+    }
+}
+
+impl<T, NROWS, NCOLS> fmt::Debug for MatGen2<T, NROWS, NCOLS>
+where
+    T: Copy + Default + fmt::Debug,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut is_first = true;
