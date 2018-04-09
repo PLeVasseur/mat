@@ -78,13 +78,12 @@ use core::marker::{PhantomData, Unsize};
 use core::fmt;
 
 pub use mat_macros::mat;
+pub use mat_macros::mat_gen;
 use typenum::{Unsigned, Prod};
 use generic_array::{GenericArray, ArrayLength};
 
 pub mod traits;
-pub mod dimension;
 
-use dimension::DimName;
 use traits::{Matrix, UnsafeGet, Zero};
 
 /// Statically allocated (row major order) matrix
@@ -102,20 +101,9 @@ where
     ncols: PhantomData<NCOLS>,
 }
 
-#[repr(C)]
+/// Statically allocated (row major order) matrix, generic column and row sizes
+#[derive(Clone)]
 pub struct MatGen<T, NROWS, NCOLS>
-where
-    T: Copy + Default,
-    NROWS: DimName,
-    NCOLS: DimName,
-    NROWS::Value: Mul<NCOLS::Value>,
-    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>,
-{
-    data: GenericArray<T, Prod<NROWS::Value, NCOLS::Value>>,
-}
-
-#[repr(C)]
-pub struct MatGen2<T, NROWS, NCOLS>
 where
     T: Copy + Default,
     NROWS: Unsigned,
@@ -167,34 +155,19 @@ where
 impl<T, NROWS, NCOLS> MatGen<T, NROWS, NCOLS>
 where
     T: Copy + Default,
-    NROWS: DimName,
-    NCOLS: DimName,
-    NROWS::Value: Mul<NCOLS::Value>,
-    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>
 {
-    fn new() -> Self {
+    pub fn new(data: GenericArray<T, Prod<NROWS, NCOLS>>/* type signature? */) -> Self {
         MatGen {
-            data: Default::default()
+            data
         }
     }
 }
 
 impl<T, NROWS, NCOLS> Default for MatGen<T, NROWS, NCOLS>
-where
-    T: Copy + Zero + Default,
-    NROWS: DimName,
-    NCOLS: DimName,
-    NROWS::Value: Mul<NCOLS::Value>,
-    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>,
-{
-    fn default() -> MatGen<T, NROWS, NCOLS> {
-        MatGen {
-            data: Default::default()
-        }
-    }
-}
-
-impl<T, NROWS, NCOLS> Default for MatGen2<T, NROWS, NCOLS>
 where
     T: Copy + Default,
     NROWS: Unsigned,
@@ -202,8 +175,8 @@ where
     NROWS: Mul<NCOLS>,
     Prod<NROWS, NCOLS>: ArrayLength<T>,
 {
-    fn default() -> MatGen2<T, NROWS, NCOLS> {
-        MatGen2 {
+    fn default() -> MatGen<T, NROWS, NCOLS> {
+        MatGen {
             data: Default::default()
         }
     }
@@ -236,31 +209,6 @@ where
 impl<T, NROWS, NCOLS> fmt::Debug for MatGen<T, NROWS, NCOLS>
 where
     T: Copy + Default + fmt::Debug,
-    NROWS: DimName + Unsigned,
-    NCOLS: DimName + Unsigned,
-    NROWS::Value: Mul<NCOLS::Value>,
-    Prod<NROWS::Value, NCOLS::Value>: ArrayLength<T>
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut is_first = true;
-        let slice = &self.data.as_slice();
-        f.write_str("[")?;
-        for row in slice.chunks(NCOLS::to_usize()) {
-            if is_first {
-                is_first = false;
-            } else {
-                f.write_str(", ")?;
-            }
-
-            write!(f, "{:?}", row)?;
-        }
-        f.write_str("]")
-    }
-}
-
-impl<T, NROWS, NCOLS> fmt::Debug for MatGen2<T, NROWS, NCOLS>
-where
-    T: Copy + Default + fmt::Debug,
     NROWS: Unsigned,
     NCOLS: Unsigned,
     NROWS: Mul<NCOLS>,
@@ -268,7 +216,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut is_first = true;
-        let slice = &self.data.as_slice();
+        let slice: &[T] = &self.data.as_slice();
         f.write_str("[")?;
         for row in slice.chunks(NCOLS::to_usize()) {
             if is_first {
@@ -294,6 +242,18 @@ where
     type NCOLS = NCOLS;
 }
 
+impl<'a, T, NROWS, NCOLS> Matrix for &'a MatGen<T, NROWS, NCOLS>
+where
+    T: Copy + Default,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    type NROWS = NROWS;
+    type NCOLS = NCOLS;
+}
+
 impl<'a, T, BUFFER, NROWS, NCOLS> UnsafeGet for &'a Mat<T, BUFFER, NROWS, NCOLS>
 where
     BUFFER: Unsize<[T]>,
@@ -309,6 +269,22 @@ where
     }
 }
 
+impl<'a, T, NROWS, NCOLS> UnsafeGet for &'a MatGen<T, NROWS, NCOLS>
+where
+    T: Copy + Default,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    type Elem = T;
+
+    unsafe fn unsafe_get(self, r: usize, c: usize) -> T {
+        let slice: &[T] = &self.data.as_slice();
+        *slice.get_unchecked(r * NCOLS::to_usize() + c)
+    }
+}
+
 impl<'a, T, BUFFER, NROWS, NCOLS, R> ops::Mul<R> for &'a Mat<T, BUFFER, NROWS, NCOLS>
 where
     BUFFER: Unsize<[T]>,
@@ -318,6 +294,22 @@ where
     R: Matrix<NROWS = NCOLS>,
 {
     type Output = Product<&'a Mat<T, BUFFER, NROWS, NCOLS>, R>;
+
+    fn mul(self, rhs: R) -> Self::Output {
+        Product { l: self, r: rhs }
+    }
+}
+
+impl<'a, T, NROWS, NCOLS, R> ops::Mul<R> for &'a MatGen<T, NROWS, NCOLS>
+where
+    T: Copy + Default,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>,
+    R: Matrix<NROWS = NCOLS>,
+{
+    type Output = Product<&'a MatGen<T, NROWS, NCOLS>, R>;
 
     fn mul(self, rhs: R) -> Self::Output {
         Product { l: self, r: rhs }
