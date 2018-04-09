@@ -215,6 +215,12 @@ where
     Prod<NROWS, NCOLS>: ArrayLength<T>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+        // account for when one of the dimensions is zero
+        if NROWS::to_usize() < 1 || NCOLS::to_usize() < 1 {
+            return f.write_str("[]")
+        }
+
         let mut is_first = true;
         let slice: &[T] = &self.data.as_slice();
         f.write_str("[")?;
