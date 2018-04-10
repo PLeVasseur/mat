@@ -75,6 +75,7 @@ pub extern crate generic_array;
 use core::ops;
 use core::ops::{Mul, DerefMut};
 use core::marker::{PhantomData, Unsize};
+use core::borrow::{BorrowMut};
 use core::fmt;
 
 pub use mat_macros::mat;
@@ -426,7 +427,7 @@ where
 
 impl<T, NROWS, NCOLS, R> ops::Mul<R> for MatGenImm<T, NROWS, NCOLS>
 where
-    T: Copy + Default,
+    T: Copy + Default + Zero,
     NROWS: Unsigned,
     NCOLS: Unsigned,
     NROWS: Mul<NCOLS>,
@@ -440,6 +441,14 @@ where
     fn mul(self, rhs: R) -> Self::Output {
         let mut store: MatGenImm<T, NROWS, R::NCOLS> = Default::default();
         let slice: &mut [T] = store.data.borrow_mut();
+
+        let mut sum = T::zero();
+        for r in 0..NROWS::to_usize() {
+            for c in 0..R::NCOLS::to_usize() {
+                slice[r * R::NCOLS::to_usize() + c] = T::zero();
+            }
+        }
+        store
     }
 }
 
