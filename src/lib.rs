@@ -440,14 +440,17 @@ where
 
     fn mul(self, rhs: R) -> Self::Output {
         let mut store: MatGenImm<T, NROWS, R::NCOLS> = Default::default();
-        let slice: &mut [T] = store.data.borrow_mut();
+        {
+            let slice: &mut [T] = store.data.borrow_mut();
 
-        let mut sum = T::zero();
-        for r in 0..NROWS::to_usize() {
-            for c in 0..R::NCOLS::to_usize() {
-                slice[r * R::NCOLS::to_usize() + c] = T::zero();
+            let mut sum = T::zero();
+            for r in 0..NROWS::to_usize() {
+                for c in 0..R::NCOLS::to_usize() {
+                    slice[r * R::NCOLS::to_usize() + c] = T::zero();
+                }
             }
         }
+
         store
     }
 }
