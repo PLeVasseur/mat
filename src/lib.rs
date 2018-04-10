@@ -438,7 +438,7 @@ where
     type Output = MatGenImm<T, NROWS, R::NCOLS>;
 
     fn mul(self, rhs: R) -> Self::Output {
-        let store: MatGenImm<T, NROWS, R::NCOLS> = Default::default();
+        let mut store: MatGenImm<T, NROWS, R::NCOLS> = Default::default();
         let slice: &mut [T] = store.data.borrow_mut();
     }
 }
