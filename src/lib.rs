@@ -73,7 +73,7 @@ pub extern crate typenum;
 pub extern crate generic_array;
 
 use core::ops;
-use core::ops::{Mul};
+use core::ops::{Mul, DerefMut};
 use core::marker::{PhantomData, Unsize};
 use core::fmt;
 
@@ -84,7 +84,7 @@ use generic_array::{GenericArray, ArrayLength};
 
 pub mod traits;
 
-use traits::{Matrix, UnsafeGet, Zero};
+use traits::{Matrix, UnsafeGet, Zero, ImmMatrix};
 
 /// Statically allocated (row major order) matrix
 #[derive(Clone)]
@@ -110,6 +110,19 @@ where
     NCOLS: Unsigned,
     NROWS: Mul<NCOLS>,
     Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    data: GenericArray<T, Prod<NROWS, NCOLS>>,
+}
+
+/// Statically allocated (row major order) matrix, generic column and row sizes
+#[derive(Clone)]
+pub struct MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>,
 {
     data: GenericArray<T, Prod<NROWS, NCOLS>>,
 }
@@ -182,6 +195,36 @@ where
     }
 }
 
+impl<T, NROWS, NCOLS> MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>
+{
+    pub fn new(data: GenericArray<T, Prod<NROWS, NCOLS>>/* type signature? */) -> Self {
+        MatGenImm {
+            data
+        }
+    }
+}
+
+impl<T, NROWS, NCOLS> Default for MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    fn default() -> MatGenImm<T, NROWS, NCOLS> {
+        MatGenImm {
+            data: Default::default()
+        }
+    }
+}
+
 impl<T, BUFFER, NROWS, NCOLS> fmt::Debug for Mat<T, BUFFER, NROWS, NCOLS>
 where
     BUFFER: Unsize<[T]>,
@@ -237,6 +280,37 @@ where
     }
 }
 
+impl<T, NROWS, NCOLS> fmt::Debug for MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default + fmt::Debug,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+        // account for when one of the dimensions is zero
+        if NROWS::to_usize() < 1 || NCOLS::to_usize() < 1 {
+            return f.write_str("[]")
+        }
+
+        let mut is_first = true;
+        let slice: &[T] = &self.data.as_slice();
+        f.write_str("[")?;
+        for row in slice.chunks(NCOLS::to_usize()) {
+            if is_first {
+                is_first = false;
+            } else {
+                f.write_str(", ")?;
+            }
+
+            write!(f, "{:?}", row)?;
+        }
+        f.write_str("]")
+    }
+}
+
 impl<'a, T, BUFFER, NROWS, NCOLS> Matrix for &'a Mat<T, BUFFER, NROWS, NCOLS>
 where
     BUFFER: Unsize<[T]>,
@@ -255,6 +329,18 @@ where
     NCOLS: Unsigned,
     NROWS: Mul<NCOLS>,
     Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    type NROWS = NROWS;
+    type NCOLS = NCOLS;
+}
+
+impl<'a, T, NROWS, NCOLS> ImmMatrix for &'a MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>,
 {
     type NROWS = NROWS;
     type NCOLS = NCOLS;
@@ -282,6 +368,22 @@ where
     NCOLS: Unsigned,
     NROWS: Mul<NCOLS>,
     Prod<NROWS, NCOLS>: ArrayLength<T>,
+{
+    type Elem = T;
+
+    unsafe fn unsafe_get(self, r: usize, c: usize) -> T {
+        let slice: &[T] = &self.data.as_slice();
+        *slice.get_unchecked(r * NCOLS::to_usize() + c)
+    }
+}
+
+impl<'a, T, NROWS, NCOLS> UnsafeGet for &'a MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>,
 {
     type Elem = T;
 
@@ -319,6 +421,25 @@ where
 
     fn mul(self, rhs: R) -> Self::Output {
         Product { l: self, r: rhs }
+    }
+}
+
+impl<T, NROWS, NCOLS, R> ops::Mul<R> for MatGenImm<T, NROWS, NCOLS>
+where
+    T: Copy + Default,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>,
+    NROWS: Mul<R::NCOLS>,
+    Prod<NROWS, R::NCOLS>: ArrayLength<T>,
+    R: ImmMatrix<NROWS = NCOLS>,
+{
+    type Output = MatGenImm<T, NROWS, R::NCOLS>;
+
+    fn mul(self, rhs: R) -> Self::Output {
+        let store: MatGenImm<T, NROWS, R::NCOLS> = Default::default();
+        let slice: &mut [T] = store.data.borrow_mut();
     }
 }
 
