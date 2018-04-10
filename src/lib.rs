@@ -74,6 +74,7 @@ pub extern crate generic_array;
 
 use core::ops;
 use core::ops::{Mul};
+use core::borrow::{BorrowMut};
 use core::marker::{PhantomData, Unsize};
 use core::fmt;
 
@@ -84,7 +85,7 @@ use generic_array::{GenericArray, ArrayLength};
 
 pub mod traits;
 
-use traits::{Matrix, UnsafeGet, Zero};
+use traits::{LazyMatrix, UnsafeGet, Zero};
 
 /// Statically allocated (row major order) matrix
 #[derive(Clone)]
@@ -237,7 +238,7 @@ where
     }
 }
 
-impl<'a, T, BUFFER, NROWS, NCOLS> Matrix for &'a Mat<T, BUFFER, NROWS, NCOLS>
+impl<'a, T, BUFFER, NROWS, NCOLS> LazyMatrix for &'a Mat<T, BUFFER, NROWS, NCOLS>
 where
     BUFFER: Unsize<[T]>,
     NROWS: Unsigned,
@@ -246,9 +247,19 @@ where
 {
     type NROWS = NROWS;
     type NCOLS = NCOLS;
+    type MAT_TYPE = Mat<T, BUFFER, NROWS, NCOLS>;
+
+    fn eval(self, m: &mut Self::MAT_TYPE) {
+        let slice: &mut [T] = &mut m.buffer;
+        for r in 0..Self::NROWS::to_usize() {
+            for c in 0..Self::NCOLS::to_usize() {
+                slice[r * NCOLS::to_usize() + c] = self.get(r,c)
+            }
+        }
+    }
 }
 
-impl<'a, T, NROWS, NCOLS> Matrix for &'a MatGen<T, NROWS, NCOLS>
+impl<'a, T, NROWS, NCOLS> LazyMatrix for &'a MatGen<T, NROWS, NCOLS>
 where
     T: Copy + Default,
     NROWS: Unsigned,
@@ -258,6 +269,16 @@ where
 {
     type NROWS = NROWS;
     type NCOLS = NCOLS;
+    type MAT_TYPE = MatGen<T, NROWS, NCOLS>;
+
+    fn eval(self, m: &mut Self::MAT_TYPE) {
+        let slice: &mut GenericArray<T, Prod<NROWS, NCOLS>> = m.data.borrow_mut();
+        for r in 0..Self::NROWS::to_usize() {
+            for c in 0..Self::NCOLS::to_usize() {
+                slice[r * NCOLS::to_usize() + c] = self.get(r,c)
+            }
+        }
+    }
 }
 
 impl<'a, T, BUFFER, NROWS, NCOLS> UnsafeGet for &'a Mat<T, BUFFER, NROWS, NCOLS>
@@ -297,7 +318,7 @@ where
     NROWS: Unsigned,
     NCOLS: Unsigned,
     T: Copy,
-    R: Matrix<NROWS = NCOLS>,
+    R: LazyMatrix<NROWS = NCOLS>,
 {
     type Output = Product<&'a Mat<T, BUFFER, NROWS, NCOLS>, R>;
 
@@ -313,7 +334,7 @@ where
     NCOLS: Unsigned,
     NROWS: Mul<NCOLS>,
     Prod<NROWS, NCOLS>: ArrayLength<T>,
-    R: Matrix<NROWS = NCOLS>,
+    R: LazyMatrix<NROWS = NCOLS>,
 {
     type Output = Product<&'a MatGen<T, NROWS, NCOLS>, R>;
 
@@ -324,22 +345,25 @@ where
 
 impl<M> traits::Transpose for M
 where
-    M: Matrix,
+    M: LazyMatrix,
 {
 }
 
-impl<M> Matrix for Transpose<M>
+impl<M> LazyMatrix for Transpose<M>
 where
-    M: Matrix,
+    M: LazyMatrix,
 {
     // NOTE reversed size!
     type NROWS = M::NCOLS;
     type NCOLS = M::NROWS;
+    type MAT_TYPE = ();
+
+    fn eval(self, m: &mut Self::MAT_TYPE) {}
 }
 
 impl<M> UnsafeGet for Transpose<M>
 where
-    M: Matrix,
+    M: LazyMatrix,
 {
     type Elem = M::Elem;
 
@@ -351,8 +375,8 @@ where
 
 impl<L, R> ops::Mul<R> for Transpose<L>
 where
-    L: Matrix,
-    R: Matrix<NROWS = L::NROWS>,
+    L: LazyMatrix,
+    R: LazyMatrix<NROWS = L::NROWS>,
 {
     type Output = Product<Transpose<L>, R>;
 
@@ -361,20 +385,34 @@ where
     }
 }
 
-impl<L, R, T> Matrix for Product<L, R>
+impl<L, R, T> LazyMatrix for Product<L, R>
 where
-    L: Matrix<Elem = T>,
-    R: Matrix<Elem = T>,
-    T: ops::Add<T, Output = T> + ops::Mul<T, Output = T> + Copy + Zero,
+    L: LazyMatrix<Elem = T>,
+    R: LazyMatrix<Elem = T>,
+    T: ops::Add<T, Output = T> + ops::Mul<T, Output = T> + Copy + Zero + Default,
+    L::NROWS: Unsigned,
+    R::NCOLS: Unsigned,
+    L::NROWS: Mul<R::NCOLS>,
+    Prod<L::NROWS, R::NCOLS>: ArrayLength<T>
 {
     type NROWS = L::NROWS;
     type NCOLS = R::NCOLS;
+    type MAT_TYPE = MatGen<T, L::NROWS, R::NCOLS>;
+
+    fn eval(self, m: &mut Self::MAT_TYPE) {
+        let slice: &mut GenericArray<T, Prod<L::NROWS, R::NCOLS>> = m.data.borrow_mut();
+        for r in 0..Self::NROWS::to_usize() {
+            for c in 0..Self::NCOLS::to_usize() {
+                slice[r * Self::NCOLS::to_usize() + c] = self.get(r,c)
+            }
+        }
+    }
 }
 
 impl<T, L, R> UnsafeGet for Product<L, R>
 where
-    L: Matrix<Elem = T>,
-    R: Matrix<Elem = T>,
+    L: LazyMatrix<Elem = T>,
+    R: LazyMatrix<Elem = T>,
     T: ops::Add<T, Output = T> + ops::Mul<T, Output = T> + Copy + Zero,
 {
     type Elem = T;
@@ -390,9 +428,9 @@ where
 
 impl<L, R, RHS> ops::Add<RHS> for Product<L, R>
 where
-    L: Matrix,
-    R: Matrix,
-    RHS: Matrix<NROWS = L::NROWS, NCOLS = R::NCOLS>,
+    L: LazyMatrix,
+    R: LazyMatrix,
+    RHS: LazyMatrix<NROWS = L::NROWS, NCOLS = R::NCOLS>,
 {
     type Output = Sum<Product<L, R>, RHS>;
 
@@ -401,20 +439,23 @@ where
     }
 }
 
-impl<T, L, R> Matrix for Sum<L, R>
+impl<T, L, R> LazyMatrix for Sum<L, R>
 where
-    L: Matrix<Elem = T>,
-    R: Matrix<Elem = T>,
+    L: LazyMatrix<Elem = T>,
+    R: LazyMatrix<Elem = T>,
     T: ops::Add<T, Output = T> + Copy,
 {
     type NROWS = L::NROWS;
     type NCOLS = L::NCOLS;
+    type MAT_TYPE = ();
+
+    fn eval(self, m: &mut Self::MAT_TYPE) {}
 }
 
 impl<T, L, R> UnsafeGet for Sum<L, R>
 where
-    L: Matrix<Elem = T>,
-    R: Matrix<Elem = T>,
+    L: LazyMatrix<Elem = T>,
+    R: LazyMatrix<Elem = T>,
     T: ops::Add<T, Output = T> + Copy,
 {
     type Elem = T;

@@ -4,7 +4,7 @@ extern crate mat;
 
 #[test]
 fn macro_mat() {
-    use mat::traits::Matrix;
+    use mat::traits::LazyMatrix;
 
     let a = mat::mat![
         [1.0, 2.0],
@@ -22,7 +22,7 @@ fn macro_mat() {
 
 #[test]
 fn macro_mult_mat() {
-    use mat::traits::Matrix;
+    use mat::traits::LazyMatrix;
 
     // 2 by 3 matrix
     let a = mat::mat![
@@ -49,7 +49,7 @@ fn macro_mult_mat() {
 
 #[test]
 fn macro_mat_gen() {
-    use mat::traits::Matrix;
+    use mat::traits::LazyMatrix;
 
     let a = mat::mat_gen![
         [1.0, 2.0],
@@ -67,7 +67,7 @@ fn macro_mat_gen() {
 
 #[test]
 fn macro_mult_mat_gen() {
-    use mat::traits::Matrix;
+    use mat::traits::LazyMatrix;
 
     // 2 by 3 matrix
     let a = mat::mat_gen![

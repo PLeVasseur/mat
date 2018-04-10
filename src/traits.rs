@@ -10,12 +10,23 @@ pub trait Transpose: Copy {
     }
 }
 
-/// A matrix
-pub trait Matrix: UnsafeGet {
+pub trait EagerMatrix {
     /// Number of rows
     type NROWS: Unsigned;
     /// Number of columns
     type NCOLS: Unsigned;
+
+
+}
+
+/// A matrix
+pub trait LazyMatrix: UnsafeGet {
+    /// Number of rows
+    type NROWS: Unsigned;
+    /// Number of columns
+    type NCOLS: Unsigned;
+    /// Backing Mat or MatGen type
+    type MAT_TYPE;
 
     /// Returns the element at row `r` and column `c`
     ///
@@ -27,6 +38,8 @@ pub trait Matrix: UnsafeGet {
 
         unsafe { self.unsafe_get(r, c) }
     }
+
+    fn eval(self, &mut Self::MAT_TYPE);
 
     /// Returns the size of the matrix
     fn size(self) -> (usize, usize) {
@@ -54,6 +67,13 @@ pub trait UnsafeGet: Copy {
     /// Returns the element at row `r` and column `c` with performing bounds checks
     unsafe fn unsafe_get(self, r: usize, c: usize) -> Self::Elem;
 }
+
+pub trait UnsafePut {
+    type MAT_TYPE;
+
+    fn unsafe_put(self, &mut Self::MAT_TYPE);
+}
+
 
 /// Types that have a "zero" value
 pub trait Zero {
