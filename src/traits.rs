@@ -1,6 +1,7 @@
 //! Traits
 
 use typenum::Unsigned;
+use super::MatGen;
 
 /// The transpose operation
 pub trait Transpose: Copy {

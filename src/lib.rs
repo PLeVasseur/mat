@@ -400,7 +400,7 @@ where
     type MAT_TYPE = MatGen<T, L::NROWS, R::NCOLS>;
 
     fn eval(self, m: &mut Self::MAT_TYPE) {
-        let slice: &mut GenericArray<T, Prod<L::NROWS, R::NCOLS>> = m.data.borrow_mut();
+        let slice: &mut [T] = m.data.borrow_mut();
         for r in 0..Self::NROWS::to_usize() {
             for c in 0..Self::NCOLS::to_usize() {
                 slice[r * Self::NCOLS::to_usize() + c] = self.get(r,c)
