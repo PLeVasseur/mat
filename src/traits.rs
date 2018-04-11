@@ -10,7 +10,7 @@ pub trait Transpose: Copy {
     }
 }
 
-pub trait TranposeImm: Copy {
+pub trait TransposeImm: Copy {
     type Output;
 
     fn t(self) -> Self::Output;

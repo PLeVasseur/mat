@@ -495,14 +495,15 @@ impl<'a, T, NROWS, NCOLS, R> ops::Add<R> for &'a MatGenImm<T, NROWS, NCOLS>
     }
 }
 
-impl<T, NROWS, NCOLS, M> traits::TranposeImm for M
+impl<'a, T, NROWS, NCOLS> traits::TransposeImm for &'a MatGenImm<T, NROWS, NCOLS>
 where
-    M: ImmMatrix<Elem = T, NROWS = NROWS, NCOLS = NCOLS>,
     T: Copy + Default + Zero + ops::Mul<T, Output = T> + ops::Add<T, Output = T>,
     NROWS: Unsigned,
     NCOLS: Unsigned,
     NCOLS: Mul<NROWS>,
-    Prod<NCOLS, NROWS>: ArrayLength<T>
+    Prod<NCOLS, NROWS>: ArrayLength<T>,
+    NROWS: Mul<NCOLS>,
+    Prod<NROWS, NCOLS>: ArrayLength<T>
 {
     type Output = MatGenImm<T, NCOLS, NROWS>;
 
@@ -510,6 +511,8 @@ where
 
         // one way to go about this is to do fairly expensive
         // copying of the rows to columns and columns to rows
+        // I liked the approach that was taken with the Tranpose trait,
+        // where the NROWS and NCOLS were just swapped
         let mut store: MatGenImm<T, NCOLS, NROWS> = Default::default();
         {
             let slice: &mut [T] = store.data.borrow_mut();

@@ -220,7 +220,7 @@ fn mat_mul_assignment() {
 #[test]
 fn mat_tranpose() {
     use mat::traits::ImmMatrix;
-    use mat::traits::TranposeImm;
+    use mat::traits::TransposeImm;
 
     let a = mat::mat_gen_imm![
         [1., 2.],
