@@ -426,7 +426,7 @@ where
     }
 }
 
-impl<T, NROWS, NCOLS, R> ops::Mul<R> for MatGenImm<T, NROWS, NCOLS>
+impl<'a, T, NROWS, NCOLS, R> ops::Mul<R> for &'a MatGenImm<T, NROWS, NCOLS>
 where
     T: Copy + Default + Zero + ops::Mul<T, Output = T> + ops::Add<T, Output = T>,
     NROWS: Unsigned,
@@ -435,7 +435,7 @@ where
     Prod<NROWS, NCOLS>: ArrayLength<T>,
     NROWS: Mul<R::NCOLS>,
     Prod<NROWS, R::NCOLS>: ArrayLength<T>,
-    R: ImmMatrix<Elem = T, NROWS = NCOLS>,
+    R: ImmMatrix<Elem = T, NROWS = NCOLS>
 {
     type Output = MatGenImm<T, NROWS, R::NCOLS>;
 

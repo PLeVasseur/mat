@@ -120,6 +120,9 @@ fn macro_mult_mat_gen_imm() {
         [3.0, 4.0, 5.0],
     ];
 
+    assert_eq!(a.nrows(), 2);
+    assert_eq!(a.ncols(), 3);
+
     // 3 by 2 matrix
     let b = mat::mat_gen_imm![
         [1.0, 2.0],
@@ -127,12 +130,17 @@ fn macro_mult_mat_gen_imm() {
         [5.0, 6.0],
     ];
 
-    // build an expression tree
-    let c = a * b;
+    assert_eq!(b.nrows(), 3);
+    assert_eq!(b.ncols(), 2);
+
+    assert_eq!(a.ncols(), b.nrows());
+
+    // multiplication
+    let c = &a * &b;
 
     // evaluate the tree
-//    assert_eq!(c.get(0, 0), 22.0);
-//    assert_eq!(c.get(0, 1), 28.0);
-//    assert_eq!(c.get(1, 0), 40.0);
-//    assert_eq!(c.get(1, 1), 52.0);
+    assert_eq!(c.get(0, 0), 22.0);
+    assert_eq!(c.get(0, 1), 28.0);
+    assert_eq!(c.get(1, 0), 40.0);
+    assert_eq!(c.get(1, 1), 52.0);
 }
