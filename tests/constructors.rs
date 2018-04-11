@@ -1,7 +1,7 @@
 extern crate mat;
 
 #[test]
-fn macro_mat_gen() {
+fn mat_gen() {
     use mat::traits::Matrix;
 
     let a: mat::MatGen<f32, mat::typenum::U3, mat::typenum::U2> = Default::default();

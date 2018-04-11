@@ -178,3 +178,41 @@ fn macro_add_mat_gen_imm() {
     assert_eq!(c.get(1, 0), 6.0);
     assert_eq!(c.get(1, 1), 8.0);
 }
+
+#[test]
+fn mat_add_assignment() {
+    use mat::traits::ImmMatrix;
+
+    let a = mat::mat_gen_imm![
+        [0., 0.],
+        [0., 0.],
+    ];
+
+    let b = mat::mat_gen_imm![
+        [0., 0.],
+        [0., 0.],
+    ];
+
+    let mut c: mat::MatGenImm<f64, mat::typenum::U2, mat::typenum::U2> = Default::default();
+
+    c = &a + &b;
+}
+
+#[test]
+fn mat_mul_assignment() {
+    use mat::traits::ImmMatrix;
+
+    let a = mat::mat_gen_imm![
+        [0., 0.],
+        [0., 0.],
+    ];
+
+    let b = mat::mat_gen_imm![
+        [0., 0.],
+        [0., 0.],
+    ];
+
+    let mut c: mat::MatGenImm<f64, mat::typenum::U2, mat::typenum::U2> = Default::default();
+
+    c = &a * &b;
+}
