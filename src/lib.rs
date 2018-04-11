@@ -495,6 +495,37 @@ impl<'a, T, NROWS, NCOLS, R> ops::Add<R> for &'a MatGenImm<T, NROWS, NCOLS>
     }
 }
 
+impl<'a, T, NROWS, NCOLS, R> ops::Sub<R> for &'a MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default + Zero + ops::Mul<T, Output = T> + ops::Add<T, Output = T> + ops::Sub<T, Output = T>,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>,
+        NROWS: Mul<R::NCOLS>,
+        Prod<NROWS, R::NCOLS>: ArrayLength<T>,
+        R: ImmMatrix<Elem = T, NROWS = NROWS, NCOLS = NCOLS>
+{
+    type Output = MatGenImm<T, NROWS, NCOLS>;
+
+    fn sub(self, rhs: R) -> Self::Output {
+        let mut store: MatGenImm<T, NROWS, NCOLS> = Default::default();
+        {
+            let slice: &mut [T] = store.data.borrow_mut();
+
+            // C = A + B
+            for i in 0..NROWS::to_usize() {
+                for j in 0..NCOLS::to_usize() {
+
+                    slice[i * NCOLS::to_usize() + j] =  self.get(i, j) - rhs.get(i, j);
+                }
+            }
+        }
+
+        store
+    }
+}
+
 impl<'a, T, NROWS, NCOLS> traits::TransposeImm for &'a MatGenImm<T, NROWS, NCOLS>
 where
     T: Copy + Default + Zero + ops::Mul<T, Output = T> + ops::Add<T, Output = T>,

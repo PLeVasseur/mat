@@ -235,3 +235,26 @@ fn mat_tranpose() {
     assert_eq!(c.get(1, 0), 2.);
     assert_eq!(c.get(1, 1), 4.);
 }
+
+#[test]
+fn mat_sub() {
+    use mat::traits::ImmMatrix;
+
+    let a = mat::mat_gen_imm![
+        [1., 2.],
+        [3., 4.],
+    ];
+
+    let b = mat::mat_gen_imm![
+        [4., 3.],
+        [2., 1.],
+    ];
+
+    let c = &a - &b;
+
+    // evaluate the tree
+    assert_eq!(c.get(0, 0), -3.);
+    assert_eq!(c.get(0, 1), -1.);
+    assert_eq!(c.get(1, 0),  1.);
+    assert_eq!(c.get(1, 1),  3.);
+}
