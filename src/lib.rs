@@ -205,7 +205,7 @@ impl<T, NROWS, NCOLS> MatGenImm<T, NROWS, NCOLS>
         NROWS: Mul<NCOLS>,
         Prod<NROWS, NCOLS>: ArrayLength<T>
 {
-    pub fn new(data: GenericArray<T, Prod<NROWS, NCOLS>>/* type signature? */) -> Self {
+    pub fn new(data: GenericArray<T, Prod<NROWS, NCOLS>>) -> Self {
         MatGenImm {
             data
         }
@@ -482,7 +482,7 @@ impl<'a, T, NROWS, NCOLS, R> ops::Add<R> for &'a MatGenImm<T, NROWS, NCOLS>
         {
             let slice: &mut [T] = store.data.borrow_mut();
 
-            // C = A * B
+            // C = A + B
             for i in 0..NROWS::to_usize() {
                 for j in 0..NCOLS::to_usize() {
 
@@ -493,6 +493,39 @@ impl<'a, T, NROWS, NCOLS, R> ops::Add<R> for &'a MatGenImm<T, NROWS, NCOLS>
 
         store
     }
+}
+
+impl<T, NROWS, NCOLS, M> traits::TranposeImm for M
+where
+    M: ImmMatrix<Elem = T, NROWS = NROWS, NCOLS = NCOLS>,
+    T: Copy + Default + Zero + ops::Mul<T, Output = T> + ops::Add<T, Output = T>,
+    NROWS: Unsigned,
+    NCOLS: Unsigned,
+    NCOLS: Mul<NROWS>,
+    Prod<NCOLS, NROWS>: ArrayLength<T>
+{
+    type Output = MatGenImm<T, NCOLS, NROWS>;
+
+    fn t(self) -> Self::Output {
+
+        // one way to go about this is to do fairly expensive
+        // copying of the rows to columns and columns to rows
+        let mut store: MatGenImm<T, NCOLS, NROWS> = Default::default();
+        {
+            let slice: &mut [T] = store.data.borrow_mut();
+
+            // B = A.T
+            for i in 0..NROWS::to_usize() {
+                for j in 0..NCOLS::to_usize() {
+
+                    slice[i * NCOLS::to_usize() + j] =  self.get(j, i);
+                }
+            }
+        }
+
+        store
+    }
+
 }
 
 impl<M> traits::Transpose for M

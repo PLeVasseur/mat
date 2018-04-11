@@ -216,3 +216,22 @@ fn mat_mul_assignment() {
 
     c = &a * &b;
 }
+
+#[test]
+fn mat_tranpose() {
+    use mat::traits::ImmMatrix;
+    use mat::traits::TranposeImm;
+
+    let a = mat::mat_gen_imm![
+        [1., 2.],
+        [3., 4.],
+    ];
+
+    let c = a.t();
+
+    // evaluate the tree
+    assert_eq!(c.get(0, 0), 1.);
+    assert_eq!(c.get(0, 1), 3.);
+    assert_eq!(c.get(1, 0), 2.);
+    assert_eq!(c.get(1, 1), 4.);
+}
