@@ -73,7 +73,7 @@ pub extern crate typenum;
 pub extern crate generic_array;
 
 use core::ops;
-use core::ops::{Mul, DerefMut};
+use core::ops::{Mul};
 use core::marker::{PhantomData, Unsize};
 use core::borrow::{BorrowMut};
 use core::fmt;
@@ -444,18 +444,49 @@ where
         {
             let slice: &mut [T] = store.data.borrow_mut();
 
-            // C = A * B
-            for c_r in 0..NROWS::to_usize() {
-                for c_c in 0..R::NCOLS::to_usize() {
+            // naive iterative algorithm -- one spot for improvement
+            // either by trying to use native Rust solution or a binding
+            // to a linear algebra library to get dgemm and sgemm
+            // (single- and double-precision generalized matrix multiplication)
+            for i in 0..NROWS::to_usize() {
+                for j in 0..R::NCOLS::to_usize() {
                     let mut sum = T::zero();
 
-                    for a_c in 0..NCOLS::to_usize() {
-                        for b_r in 0..R::NROWS::to_usize() {
-                            sum = sum + self.get(c_r, a_c) + rhs.get(b_r, c_c);
-                        }
+                    for k in 0..NCOLS::to_usize() {
+                        sum = sum + self.get(i, k) * rhs.get(k, j);
                     }
+                    slice[i * R::NCOLS::to_usize() + j] = sum;
+                }
+            }
+        }
 
-                    slice[c_r * R::NCOLS::to_usize() + c_r] = sum;
+        store
+    }
+}
+
+impl<'a, T, NROWS, NCOLS, R> ops::Add<R> for &'a MatGenImm<T, NROWS, NCOLS>
+    where
+        T: Copy + Default + Zero + ops::Mul<T, Output = T> + ops::Add<T, Output = T>,
+        NROWS: Unsigned,
+        NCOLS: Unsigned,
+        NROWS: Mul<NCOLS>,
+        Prod<NROWS, NCOLS>: ArrayLength<T>,
+        NROWS: Mul<R::NCOLS>,
+        Prod<NROWS, R::NCOLS>: ArrayLength<T>,
+        R: ImmMatrix<Elem = T, NROWS = NROWS, NCOLS = NCOLS>
+{
+    type Output = MatGenImm<T, NROWS, NCOLS>;
+
+    fn add(self, rhs: R) -> Self::Output {
+        let mut store: MatGenImm<T, NROWS, NCOLS> = Default::default();
+        {
+            let slice: &mut [T] = store.data.borrow_mut();
+
+            // C = A * B
+            for i in 0..NROWS::to_usize() {
+                for j in 0..NCOLS::to_usize() {
+
+                    slice[i * NCOLS::to_usize() + j] =  self.get(i, j) + rhs.get(i, j);
                 }
             }
         }

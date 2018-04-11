@@ -144,3 +144,37 @@ fn macro_mult_mat_gen_imm() {
     assert_eq!(c.get(1, 0), 40.0);
     assert_eq!(c.get(1, 1), 52.0);
 }
+
+#[test]
+fn macro_add_mat_gen_imm() {
+    use mat::traits::ImmMatrix;
+
+    // 2 by 3 matrix
+    let a = mat::mat_gen_imm![
+        [1.0, 2.0],
+        [3.0, 4.0],
+    ];
+
+    assert_eq!(a.nrows(), 2);
+    assert_eq!(a.ncols(), 2);
+
+    // 3 by 2 matrix
+    let b = mat::mat_gen_imm![
+        [1.0, 2.0],
+        [3.0, 4.0]
+    ];
+
+    assert_eq!(b.nrows(), 2);
+    assert_eq!(b.ncols(), 2);
+
+    assert_eq!(a.ncols(), b.nrows());
+
+    // addition
+    let c = &a + &b;
+
+    // evaluate the tree
+    assert_eq!(c.get(0, 0), 2.0);
+    assert_eq!(c.get(0, 1), 4.0);
+    assert_eq!(c.get(1, 0), 6.0);
+    assert_eq!(c.get(1, 1), 8.0);
+}
