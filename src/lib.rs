@@ -80,6 +80,7 @@ use core::fmt;
 
 pub use mat_macros::mat;
 pub use mat_macros::mat_gen;
+pub use mat_macros::mat_gen_imm;
 use typenum::{Unsigned, Prod};
 use generic_array::{GenericArray, ArrayLength};
 
@@ -427,14 +428,14 @@ where
 
 impl<T, NROWS, NCOLS, R> ops::Mul<R> for MatGenImm<T, NROWS, NCOLS>
 where
-    T: Copy + Default + Zero,
+    T: Copy + Default + Zero + ops::Mul<T, Output = T> + ops::Add<T, Output = T>,
     NROWS: Unsigned,
     NCOLS: Unsigned,
     NROWS: Mul<NCOLS>,
     Prod<NROWS, NCOLS>: ArrayLength<T>,
     NROWS: Mul<R::NCOLS>,
     Prod<NROWS, R::NCOLS>: ArrayLength<T>,
-    R: ImmMatrix<NROWS = NCOLS>,
+    R: ImmMatrix<Elem = T, NROWS = NCOLS>,
 {
     type Output = MatGenImm<T, NROWS, R::NCOLS>;
 
@@ -443,10 +444,18 @@ where
         {
             let slice: &mut [T] = store.data.borrow_mut();
 
-            let mut sum = T::zero();
-            for r in 0..NROWS::to_usize() {
-                for c in 0..R::NCOLS::to_usize() {
-                    slice[r * R::NCOLS::to_usize() + c] = T::zero();
+            // C = A * B
+            for c_r in 0..NROWS::to_usize() {
+                for c_c in 0..R::NCOLS::to_usize() {
+                    let mut sum = T::zero();
+
+                    for a_c in 0..NCOLS::to_usize() {
+                        for b_r in 0..R::NROWS::to_usize() {
+                            sum = sum + self.get(c_r, a_c) + rhs.get(b_r, c_c);
+                        }
+                    }
+
+                    slice[c_r * R::NCOLS::to_usize() + c_r] = sum;
                 }
             }
         }

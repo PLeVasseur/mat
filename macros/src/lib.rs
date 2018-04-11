@@ -99,3 +99,40 @@ pub fn mat_gen(input: TokenStream) -> TokenStream {
         mat::MatGen::<_, mat::typenum::#nrows_ty, mat::typenum::#ncols_ty>::new(gen_arr)
     }).into()
 }
+/// A macro to construct matrices generic in row and length, backed by a GenericArray
+#[proc_macro]
+pub fn mat_gen_imm(input: TokenStream) -> TokenStream {
+    let mat: Mat = syn::parse(input).unwrap();
+
+    // check consistent number of columns
+    let nrows = mat.rows.len();
+    let ncols = mat.rows.iter().next().expect("BUG: zero rows").elems.len();
+
+    for row in mat.rows.iter() {
+        for (i, expr) in row.elems.iter().enumerate() {
+            if i >= ncols {
+                expr.span()
+                .unstable()
+                .error(format!("expected {} elements", ncols,))
+                .emit();
+            }
+        }
+    }
+
+    let size = nrows * ncols;
+    let elems: Vec<&Expr> = mat.rows.iter().flat_map(|row| row.elems.iter()).collect();
+
+    let nrows_ty = Ident::from(format!("U{}", nrows));
+    let ncols_ty = Ident::from(format!("U{}", ncols));
+    let size_ty = Ident::from(format!("U{}", size));
+
+    quote!(unsafe {
+        extern crate mat;
+
+        let arr = [#(#elems,)*];
+        let slice = &arr[..];
+        let gen_arr : mat::generic_array::GenericArray<_, mat::typenum::#size_ty> = mat::generic_array::GenericArray::clone_from_slice(slice);
+
+        mat::MatGenImm::<_, mat::typenum::#nrows_ty, mat::typenum::#ncols_ty>::new(gen_arr)
+    }).into()
+}
